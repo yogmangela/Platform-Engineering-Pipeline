@@ -1,0 +1,62 @@
+version: '3.7'
+
+services:
+  # Jenkins for CI/CD
+  jenkins:
+    image: jenkins/jenkins
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+
+  # Prometheus for monitoring
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: always
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "admin" # Change the password in production!
+    restart: always
+    depends_on:
+      - prometheus
+
+  # Vault for secrets management
+  vault:
+    image: vault:1.13.3
+    container_name: vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: "root"
+    command: "server -dev"
+    restart: always
+
+  # Sample Node.js app containerized
+  app:
+    build: ./app
+    container_name: sample_app
+    ports:
+      - "30001:3000"
+    environment:
+      - NODE_ENV=development
+    depends_on:
+      - jenkins
+
+volumes:
+  jenkins_home:
+    driver: local
